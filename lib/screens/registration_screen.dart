@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flash_chat/constants.dart';
 import 'package:flutter/material.dart';
 
 import '../action_button.dart';
+import 'chat_screen.dart';
 
 class RegistrationScreen extends StatefulWidget {
   static const String id = 'registration';
@@ -11,6 +13,10 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  final _auth = FirebaseAuth.instance;
+  String email = '';
+  String password = '';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,8 +38,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               height: 48.0,
             ),
             TextField(
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.emailAddress,
+              style: TextStyle(color: Colors.black54),
               onChanged: (value) {
-                //Do something with the user input.
+                email = value;
               },
               decoration: createTextFieldDecoration(
                 hintText: 'Enter you email',
@@ -44,8 +53,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               height: 8.0,
             ),
             TextField(
+              textAlign: TextAlign.center,
+              obscureText: true,
+              style: TextStyle(color: Colors.black54),
               onChanged: (value) {
-                //Do something with the user input.
+                password = value;
               },
               decoration: createTextFieldDecoration(
                 hintText: 'Enter your password',
@@ -58,8 +70,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ActionButton(
               'Register',
               backgroundColor: Colors.blueAccent,
-              onPressed: () {
-                //Implement registration functionality.
+              onPressed: () async {
+                try {
+                  final newUser = await _auth.createUserWithEmailAndPassword(
+                      email: email, password: password);
+                  if (newUser != null) {
+                    Navigator.pushNamed(context, ChatScreen.id);
+                  }
+                } catch (e) {
+                  print(e);
+                }
               },
             ),
           ],
