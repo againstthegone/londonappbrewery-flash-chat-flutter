@@ -15,26 +15,11 @@ class _ChatScreenState extends State<ChatScreen> {
   final _firestore = FirebaseFirestore.instance;
   User? loggedInUser;
   String? messageText;
+  final _messageTextController = TextEditingController();
 
   void getCurrentUser() async {
     final user = _auth.currentUser;
     loggedInUser = user;
-    print(loggedInUser?.email);
-  }
-
-  void getMessages() async {
-    final messages = await _firestore.collection('/messages').get();
-    messages.docs.forEach((element) {
-      print(element.data());
-    });
-  }
-
-  void messagesStream() async {
-    await (_firestore.collection('/messages').snapshots()).forEach((snapshot) {
-      snapshot.docChanges.forEach((docChange) {
-        print(docChange.doc.data());
-      });
-    });
   }
 
   @override
@@ -52,9 +37,8 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
               icon: Icon(Icons.close),
               onPressed: () {
-                // _auth.signOut();
-                // Navigator.pop(context);
-                messagesStream();
+                _auth.signOut();
+                Navigator.pop(context);
               }),
         ],
         title: Text('⚡️Chat'),
@@ -76,11 +60,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
 
-                return Column(
-                  children: snapshot.data!.docs
-                      .map((doc) => Text(
-                          '${doc.data()['text']} from ${doc.data()['sender']}'))
-                      .toList(),
+                return Expanded(
+                  child: ListView(
+                    reverse: true,
+                    children: snapshot.data!.docs.reversed
+                        .map(
+                          (doc) => MessageBubble(
+                            text: doc.data()['text'],
+                            sender: doc.data()['sender'],
+                            isUser: loggedInUser?.email == doc.data()['sender'],
+                          ),
+                        )
+                        .toList(),
+                  ),
                 );
               },
             ),
@@ -91,14 +83,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: <Widget>[
                   Expanded(
                     child: TextField(
+                      controller: _messageTextController,
                       onChanged: (value) {
                         messageText = value;
                       },
+                      style: TextStyle(color: Colors.black54),
                       decoration: kMessageTextFieldDecoration,
                     ),
                   ),
                   TextButton(
                     onPressed: () {
+                      _messageTextController.clear();
                       _firestore.collection('/messages').add({
                         'text': messageText,
                         'sender': loggedInUser?.email,
@@ -114,6 +109,56 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _messageTextController.dispose();
+  }
+}
+
+class MessageBubble extends StatelessWidget {
+  final String sender;
+  final String text;
+  final bool isUser;
+
+  MessageBubble(
+      {required this.sender, required this.text, this.isUser = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(10.0),
+      child: Column(
+        crossAxisAlignment:
+            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Text(
+            sender,
+            style: TextStyle(fontSize: 12.0),
+          ),
+          Material(
+            elevation: 5.0,
+            borderRadius: isUser
+                ? BorderRadius.all(Radius.circular(30.0))
+                    .copyWith(topRight: Radius.zero)
+                : BorderRadius.all(Radius.circular(30.0))
+                    .copyWith(topLeft: Radius.zero),
+            color: isUser ? Colors.lightBlueAccent : Colors.white,
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
+              child: Text(
+                '$text',
+                style: TextStyle(
+                    fontSize: 15.0,
+                    color: isUser ? Colors.white : Colors.black54),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
